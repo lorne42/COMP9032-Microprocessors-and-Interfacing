@@ -1,0 +1,63 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.2.8</VERSION>
+ <DEVICE>"ATmega2560"</DEVICE>
+ <WORKING_DIR>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>D:/microship\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc</DIR>
+  <DIR>D:\microship\7.0\toolchain\avr8\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>D:/microship\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m2560def.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\Debug\lab3.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>lab3.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>lab3.map</FILE>
+  <FILE>lab3.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <RESET><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>173</LINE></RESET>
+  <lcd_write_com><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>342</LINE></lcd_write_com>
+  <lcd_wait_busy><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>376</LINE></lcd_wait_busy>
+  <main><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>218</LINE></main>
+  <get_keypad_input><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>288</LINE></get_keypad_input>
+  <lcd_write_data><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>358</LINE></lcd_write_data>
+  <mul_a_x><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>259</LINE></mul_a_x>
+  <sub_y_b><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>266</LINE></sub_y_b>
+  <overflow><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>234</LINE></overflow>
+  <noOverflow><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>238</LINE></noOverflow>
+  <overflow_routine><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>398</LINE></overflow_routine>
+  <noOverflow_routine><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>410</LINE></noOverflow_routine>
+  <setOverflowFlag><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>282</LINE></setOverflowFlag>
+  <endFunc><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>284</LINE></endFunc>
+  <colloop><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>291</LINE></colloop>
+  <colloop_end><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>316</LINE></colloop_end>
+  <nextcol><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>312</LINE></nextcol>
+  <rowloop><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>305</LINE></rowloop>
+  <convert><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>318</LINE></convert>
+  <busyLoop><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>382</LINE></busyLoop>
+  <getNum><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>419</LINE></getNum>
+  <getNumChoose><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>431</LINE></getNumChoose>
+  <getNumDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>436</LINE></getNumDec>
+  <getNumHex><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>468</LINE></getNumHex>
+  <twoDigitsDisplayDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>447</LINE></twoDigitsDisplayDec>
+  <threeDigitsProcessDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>494</LINE></threeDigitsProcessDec>
+  <doDisplaySecondDigitDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>452</LINE></doDisplaySecondDigitDec>
+  <singleDigitDisplayDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>460</LINE></singleDigitDisplayDec>
+  <twoDigitsProcessDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>505</LINE></twoDigitsProcessDec>
+  <singleDigitDisplayHex><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>486</LINE></singleDigitDisplayHex>
+  <twoDigitsProcessHex><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>516</LINE></twoDigitsProcessHex>
+  <loopThreeDigitsDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>495</LINE></loopThreeDigitsDec>
+  <endLoopThreeDigitsDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>501</LINE></endLoopThreeDigitsDec>
+  <loopTwoDigitsDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>506</LINE></loopTwoDigitsDec>
+  <endLoopTwoDigitsDec><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>512</LINE></endLoopTwoDigitsDec>
+  <loopTwoDigitsHex><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>517</LINE></loopTwoDigitsHex>
+  <endLoopTwoDigitsHex><FILE>C:\Users\10164\Documents\Atmel Studio\7.0\lab3\lab3\main.asm</FILE><LINE>523</LINE></endLoopTwoDigitsHex>
+ </LABELS>
+</ASSEMBLER_INFO>

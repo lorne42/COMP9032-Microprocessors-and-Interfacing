@@ -1,0 +1,5 @@
+
+AVRASM ver. 2.2.8  c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication5\AssemblerApplication5\main.asm Wed Oct 09 09:37:54 2024
+
+[builtin](2): Including file 'D:/microship\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m2560def.inc'
+c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication5\AssemblerApplication5\main.asm(36): error: .byte  not allowed in .CSEG

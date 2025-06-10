@@ -1,0 +1,38 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.2.8</VERSION>
+ <DEVICE>"ATmega2560"</DEVICE>
+ <WORKING_DIR>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>D:/microship\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc</DIR>
+  <DIR>D:\microship\7.0\toolchain\avr8\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>D:/microship\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m2560def.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\Debug\AssemblerApplication4.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>AssemblerApplication4.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>AssemblerApplication4.map</FILE>
+  <FILE>AssemblerApplication4.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <GCD_R16_R17><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>12</LINE></GCD_R16_R17>
+  <GCD_LOOP1><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>17</LINE></GCD_LOOP1>
+  <GCD_DONE1><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>26</LINE></GCD_DONE1>
+  <R16_GT_R17><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>22</LINE></R16_GT_R17>
+  <GCD_R16_R18><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>30</LINE></GCD_R16_R18>
+  <GCD_LOOP2><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>35</LINE></GCD_LOOP2>
+  <GCD_DONE2><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>44</LINE></GCD_DONE2>
+  <R16_GT_R18><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>40</LINE></R16_GT_R18>
+  <GCD_R16_R19><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>47</LINE></GCD_R16_R19>
+  <GCD_LOOP3><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>52</LINE></GCD_LOOP3>
+  <GCD_DONE3><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>61</LINE></GCD_DONE3>
+  <R16_GT_R19><FILE>c:\users\10164\Documents\Atmel Studio\7.0\AssemblerApplication4\AssemblerApplication4\main.asm</FILE><LINE>57</LINE></R16_GT_R19>
+ </LABELS>
+</ASSEMBLER_INFO>
