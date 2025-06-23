@@ -1,0 +1,756 @@
+;
+; take input in mobile key format and display on lcd
+;
+
+.include "m2560def.inc"  ; Include AVR definition file
+
+; Define variables
+; Keypad section
+.def patient_num = r10
+.def now_char = r12
+.def key_pressed = r13		; have key press
+.def mode = r14		; 0-display 1-enter 2-confirm	
+.def  input_val = r15  ; Register for storing key input value
+.def  row = r16        ; Current row register
+.def  col = r17        ; Current column register
+.def  rmask = r18      ; Mask for row scanning
+.def  cmask = r19      ; Mask for column scanning
+.def  temp1 = r20      ; Temporary register 1
+.def  temp2 = r21      ; Temporary register 2
+.def key_counter = r23      ; Counter to track multiple presses of the same key
+.def key_timer = r24        ; Timer to detect pauses between key presses
+.def last_key = r25    ; Register to track the last key pressed
+
+.equ PORTLDIR = 0xF0   ; PL7-4 for output, PL3-0 for input
+.equ ROWMASK = 0x0F    ; Used to get row input from Port L
+.equ INITCOLMASK = 0xEF  ; Initial column mask, scanning from left to right
+.equ INITROWMASK = 0x01  ; Initial row mask, scanning from top to bottom
+
+; LCD section
+; LCD commands
+.equ LCD_FUNC_SET  =0b00111000 ; 001 + DL(8 bits) N(2 line) F(5x7 dots)
+.equ LCD_DSPL_OFF  =0b00001000 ; 00001 + OFF + 00
+.equ LCD_DSPL_ON   =0b00001111 ; 00001 + ON C(show cursor) B(do blink)
+.equ LCD_DSPL_CLR  =0b00000001 ; clears display and moves cursor to top-left
+.equ LCD_ENTRY_SET =0b00000110 ; 000001 + I/D(increment) + S(no shift)
+; LCD bits
+.equ LCD_RS=7  ; bit of RS
+.equ LCD_RW=5  ; bit of RW
+.equ LCD_E=6   ; bit of E
+.equ LCD_BF=7  ; bit of BF
+.def data=r22  ; register to store LCD data and keypad input data
+
+.cseg
+	jmp RESET              ;  0x0000
+	      ; 
+.org OVF0addr
+	jmp Timer0OVF
+
+; Macro: Delay routine
+.macro delay_macro
+    ldi temp1, 0xFF
+delay_loop:
+    dec temp1
+    brne delay_loop
+.endmacro
+
+; Macro: controlable delay 1 iteration = 1ns delay
+; number of iterations is specified in r27:r26
+.macro delayControllable
+	outerLoop:
+		ldi temp1, 3
+		innerLoop:
+			dec temp1
+			nop
+			brne innerLoop
+		subi r26, 1
+		sbci r27, 0
+		brne outerLoop
+.endmacro
+
+
+.macro keypad_input_macro 
+keypad_input_loop:
+    rcall get_keypad_input         ; Call subroutine to get keypad input
+    mov temp1, input_val           ; Read the input number from input_val register
+
+    ; Check if the system is in display mode
+    clr temp2                       ; Clear temp2 (set to 0 for comparison)
+    cp mode, temp2                  ; Compare mode with 0 (display mode)
+    brne process_entry              ; If mode is not 0, branch to process_entry for input handling
+
+    ; Display Mode: Only process key 'A'
+    cpi temp1, 'A'                  ; Check if key 'A' was pressed
+    brne ignore_key                 ; If not 'A', ignore the key press
+
+    ; Single press of 'A' switches to entry mode
+    ldi temp2, 1                    ; Load 1 into temp2 to set mode to entry
+    mov mode, temp2                 ; Update mode to 1 (entry mode)
+    clr last_key                    ; Clear last key register for fresh input tracking
+    
+    ldi temp2, 0 
+    ldi r29, high(0x200)
+    ldi r28, low(0x200)
+    inc patient_num                         ; Increment the patient counter register (r10)
+
+get_patient_inc_1:    
+    inc temp2
+    cp patient_num, temp2
+    breq get_patient_ok_1
+    ADIW r29:r28, 0x10
+    rjmp get_patient_inc_1
+get_patient_ok_1:    
+    ; Display "Enter Name:" prompt on the first line of LCD
+    rcall display_prompt            ; Call subroutine to display prompt
+    rjmp keypad_input_loop          ; Return to input loop to wait for the next key
+    
+ignore_key:
+    rjmp keypad_input_loop          ; In display mode, ignore other keys and continue loop
+
+process_entry:
+    ; Entry Mode: Check if key 'A'  is pressed
+    cpi temp1, 'A'                  ; Check if key 'A' was pressed
+    breq ignore_key                ; If 'A', ignore the key press
+
+    ; Entry Mode: Check if key 'B' (Backspace) is pressed
+    cpi temp1, 'B'                  ; Check if key 'B' was pressed
+    breq backspace                  ; If 'B', branch to backspace routine
+
+    ; Entry Mode: Check if key 'C' (Clear) is pressed
+    cpi temp1, 'C'                  ; Check if key 'C' was pressed
+    breq clear_display              ; If 'C', branch to clear_display routine
+
+    ; Entry Mode: Check if key 'D' (Done) is pressed
+    cpi temp1, 'D'
+    breq handle_done                ; If 'D', branch to handle_done routine
+
+    ; Entry Mode: Check if key '1'  is pressed
+    cpi temp1, 1                  ; Check if key '1' was pressed
+    breq ignore_key               ; If '1', ignore the key press
+    
+    ; Entry Mode: Check if key '0'  is pressed
+    cpi temp1, 0                  ; Check if key '0' was pressed
+    breq ignore_key               ; If '0', ignore the key press
+    
+    ; Entry Mode: Check if key '*'  is pressed
+    cpi temp1, '*'                  ; Check if key '*' was pressed
+    breq ignore_key                ; If '*', ignore the key press
+    
+    ; Entry Mode: Check if key '#'  is pressed
+    cpi temp1, '#'                  ; Check if key '#' was pressed
+    breq ignore_key                 ; If '#', ignore the key press
+    
+    ; Process other inputs in entry mode
+    	ldi temp2, 1
+	mov key_pressed, temp2
+    cp temp1, last_key              ; Compare current key with last_key
+    brne new_key                    ; If different, treat as a new key press
+    inc key_counter                 ; Increment key_counter for character cycling
+    
+    ; Entry Mode: Check if key '7'  is pressed
+    cpi temp1, 7                  ; Check if key '7' was pressed
+    breq key_counter_cpi_4        
+    ; Entry Mode: Check if key '9'  is pressed
+    cpi temp1, 9                  ; Check if key '9' was pressed
+    breq key_counter_cpi_4       
+    rjmp key_counter_cpi_3
+    
+key_counter_subi_3:    
+    subi key_counter, 3
+key_counter_cpi_3:
+    cpi key_counter, 3
+    brsh key_counter_subi_3
+
+key_counter_subi_4:    
+    subi key_counter, 4
+key_counter_cpi_4:
+    cpi key_counter, 4
+    brsh key_counter_subi_4
+    
+    rcall display_char              ; Display the character corresponding to the key and counter
+    
+    ; Set a delay between button presses to allow cycling
+    ldi r26, low(50000)             ; Load delay value (lower byte)
+    ldi r27, high(50000)            ; Load delay value (upper byte)
+    delayControllable               ; Call delay to slow down input cycling
+    rjmp keypad_input_loop          ; Return to input loop to wait for next press
+
+new_key:
+    mov last_key, temp1             ; Update last_key to current key
+    clr key_counter                 ; Reset key_counter for new key input
+    
+    ;cli         ;pause interrupt
+    ;ldi temp1, 2              ; key_pressed == 0, key_pressed = 2
+    ;mov key_pressed, temp1
+    ;;clr last_key                    ; Clear last_key for fresh input
+    ;clr key_counter                 ; Reset key_counter
+   
+    ;ldi data, 0x14            
+    ;rcall lcd_write_com      ; 
+    ;rcall lcd_wait_busy       ; LCD 
+
+    ;st Y+, now_char
+    ;sei  ;start  interrupt
+    
+    rcall display_char              ; Display the initial character for the new key
+    rjmp keypad_input_loop          ; Return to input loop to wait for next press
+
+backspace:
+    ; Implement the backspace functionality
+    rcall clear_last_char           ; Call subroutine to clear the last character on LCD
+    rjmp keypad_input_loop          ; Return to input loop after backspace operation
+
+clear_display:
+    ; Clear the entire display using the LCD clear command
+    ldi data, 0x01                  ; Load clear display command (0x01) into data
+    rcall lcd_write_com             ; Send command to clear LCD display
+    rcall lcd_wait_busy
+    clr last_key                    ; Clear last_key for fresh input
+    clr key_counter                 ; Reset key_counter
+    rcall display_prompt
+    rjmp keypad_input_loop          ; Return to input loop after clearing display
+
+handle_done:
+    ; Use temp1 to compare mode with 2
+    ldi temp1, 2                    ; Load 2 into temp1
+    cp mode, temp1                  ; Compare mode with 2
+    breq switch_to_display          ; If mode is 2, switch back to display mode
+
+    ; If mode is 1, show patient number and set mode to 2
+    ;inc patient_num                         ; Increment the patient counter register (r10)
+    ldi temp1, '\0'
+    st Y+, temp1
+    rcall display_patient_message   ; Display the patient number
+    clr last_key                    ; Clear last key to reset input tracking
+    clr key_counter                 ; Reset key counter
+
+    ; Use temp1 to set mode to 2
+    ldi temp1, 2                    ; Load 2 into temp1
+    mov mode, temp1                 ; Set mode to 2 to indicate patient number display
+    rjmp keypad_input_loop          ; Return to input loop
+
+switch_to_display:
+    clr mode                        ; Reset mode to 0 (display mode)
+    rcall display_next_patient      ; Call subroutine to display the next patient info
+    rjmp keypad_input_loop          ; Return to input loop
+.endmacro
+ 
+    
+; Macro: Convert the row and column input to the actual value
+.macro convert_macro
+    cpi col, 3                    ; If column is 3, we have a letter
+    breq letters
+    cpi row, 3                    ; If row is 3, we have a symbol or 0
+    breq symbols
+    mov temp1, row                ; Otherwise, we have a number from 1-9
+    lsl temp1
+    add temp1, row                ; temp1 = row * 3
+    add temp1, col                ; Add column value to get the key value
+	inc temp1                     ; Increment number to move it from 0-8 to 1-9
+    jmp convert_end
+letters:
+    ldi temp1, 'A'
+    add temp1, row                ; Increment character 'A' by the row value
+    jmp convert_end
+symbols:
+    cpi col, 0                    ; Check if we have '*'
+    breq star
+    cpi col, 1                    ; Check if we have '0'
+    breq zero
+    ldi temp1, '#'                ; Otherwise, it's '#'
+    jmp convert_end
+star:
+    ldi temp1, '*'                ; Set value to '*'
+    jmp convert_end
+zero:
+    ldi temp1, 0                  ; Set value to 0
+convert_end:
+	mov input_val, temp1          ; Output the key value to input_val variable
+.endmacro
+
+RESET:
+    ldi temp1, PORTLDIR  ; Set Port L, PL7-4 for output, PL3-0 for input
+    sts DDRL, temp1      ; Configure data direction register for Port L
+    ser temp1            ; Set Port C and Port G as output
+    out DDRC, temp1      ; For LEDs
+    out DDRG, temp1      ;
+	out DDRA, temp1		 ; Set Port A as output (LCD Control)
+	out DDRF, temp1		 ; Set Port F as output (LCD Data)
+
+	clr mode          ; Set to display mode
+        ldi temp1, 2
+	mov key_pressed, temp1
+
+	; LCD Initialization
+	ldi r26, low(15000)
+	ldi r27, high(15000)
+	delayControllable ; 15ms wait
+	ldi data, LCD_FUNC_SET
+	rcall lcd_write_com  ; Function set (1 time)
+	ldi r26, low(5000)
+	ldi r27, high(5000)
+	delayControllable ; 5ms wait
+	rcall lcd_write_com  ; Function set (2 time)
+	ldi r26, low(1000)
+	ldi r27, high(1000)
+	delayControllable ; 1ms wait
+	rcall lcd_write_com  ; Function set (3 time)
+	; Initialization finished
+
+	rcall lcd_write_com ; actual function set now
+	rcall lcd_wait_busy
+	ldi data, LCD_DSPL_OFF
+	rcall lcd_write_com ; display off
+	rcall lcd_wait_busy
+	ldi data, LCD_DSPL_CLR
+	rcall lcd_write_com ; clear display
+	rcall lcd_wait_busy
+	ldi data, LCD_ENTRY_SET
+	rcall lcd_write_com ; entry mode set
+	rcall lcd_wait_busy
+	ldi data, LCD_DSPL_ON
+	rcall lcd_write_com ; display on
+	rcall lcd_wait_busy
+	
+	    ; Timer0 setup
+       ldi temp1, 0b00000000
+       out TCCR0A, temp1
+       ldi temp1, 0b00000101
+       out TCCR0B, temp1            ; Prescaling value=1024
+       ldi temp1, 1<<TOIE0          ; Enable Timer0 overflow interrupt
+       sts TIMSK0, temp1
+       
+       sei                         ; enable the global interrupt
+
+main:                     ; Main loop
+    keypad_input_macro    ; Start reading and displaying keypad inputs
+    rjmp main             ; Repeat
+
+; Subroutine: Get input from keypad
+get_keypad_input:
+    ldi cmask, INITCOLMASK  ; Initialize the column mask
+    clr col                 ; Reset column value
+colloop:
+    cpi col, 4              ; Check if all columns are scanned
+    breq colloop_end        ; If finished scanning, exit loop
+    sts PORTL, cmask        ; Scan the current column
+
+    delay_macro             ; Delay to slow down the scanning speed
+
+    lds temp1, PINL          ; Read Port F value
+    andi temp1, ROWMASK     ; Get row output value
+    cpi temp1, 0xF          ; Check if any key is pressed
+    breq nextcol            ; If no key pressed, scan the next column
+
+    ldi rmask, INITROWMASK  ; Initialize the row mask
+    clr row                 ; Reset row value
+rowloop:
+    mov temp2, temp1        
+    and temp2, rmask        ; Check the current row mask
+    breq convert            ; If a key is pressed, jump to conversion part
+    inc row                 ; Otherwise, move to the next row
+    lsl rmask               ; Shift the row mask left
+    rjmp rowloop            ; Continue row scanning
+nextcol:
+    lsl cmask               ; Shift the column mask left
+    inc col                 ; Switch to the next column
+    rjmp colloop            ; Continue column scanning
+colloop_end:
+    rjmp get_keypad_input
+convert:
+	; delay after receiving keypad press
+	ldi r26, low(50000)
+	ldi r27, high(50000)
+	delayControllable ; 50 ms delay
+	delayControllable ; 50 ms delay
+    convert_macro           ; Call the convert macro
+    ret
+
+
+clear_last_char:
+    ; Move the cursor one position back on the LCD
+    ldi data, 0x10                  ; Command to shift the cursor left (0x10)
+    rcall lcd_write_com             ; Send command to move cursor back
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ; Write a space to clear the character
+    ldi data, ' '                   ; ASCII space character to overwrite last input
+    rcall lcd_write_data            ; Write space to LCD to clear last character
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ; Move the cursor back again to align with cleared position
+    ldi data, 0x10                  ; Command to shift cursor left
+    rcall lcd_write_com             ; Move cursor to the cleared position
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    
+    ;dec r28      ;Y(r29:r28)--
+    sbiw r29:r28, 1
+    ret                             ; Return from clear_last_char subroutine
+
+display_char:
+    mov temp1, input_val           ; Read the input number from input_val register
+    
+    ldi temp2, 6
+    
+    cpi temp1, 8
+    brne temp1_ne_8
+    ldi temp2, 5
+
+temp1_ne_8:
+    cpi temp1, 9
+    brne temp1_ne_9
+    ldi temp2, 5
+
+temp1_ne_9:   
+    ; Calculate the starting ASCII character for each key (e.g., 'A' for key 2)
+    ldi temp1, 'A'                  ; Load ASCII for 'A'
+    ;subi temp1, 6                   ; Adjust to offset for keys starting from 'A' for key 2
+    sub temp1, temp2
+
+    ; Multiply last_key by 3 using addition (required for character sequence per key)
+    mov temp2, last_key             ; Copy last_key into temp2
+    add temp2, temp2                ; temp2 = last_key * 2
+    add temp2, last_key             ; temp2 = last_key * 3
+
+    ; Calculate the base ASCII character for the key
+    add temp1, temp2                ; temp1 now has the starting ASCII for the key
+    add temp1, key_counter          ; Add key_counter to get the correct letter
+
+    mov data, temp1                 ; Move the final character to data register
+    mov now_char, temp1
+    rcall lcd_write_data            ; Write character to LCD
+    rcall lcd_wait_busy
+    
+    ; Move the cursor one position back on the LCD
+    ldi data, 0x10                  ; Command to shift the cursor left (0x10)
+    rcall lcd_write_com             ; Send command to move cursor back
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    
+    ret                             ; Return from display_char subroutine
+
+display_prompt:
+    ; Clear display before showing new content
+    ldi data, LCD_DSPL_CLR          ; Command to clear display
+    rcall lcd_write_com
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ; Display "Enter Name:" on the first line without clearing display
+    ldi data, 'E'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'n'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 't'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'e'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'r'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, ' '
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'N'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'a'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'm'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, 'e'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+    ldi data, ':'
+    rcall lcd_write_data
+    rcall lcd_wait_busy
+
+    ; Move the cursor to the start of the second line for user input
+    ldi data, 0xC0                 ; Set DDRAM address to start of second line
+    rcall lcd_write_com
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ret                             ; Return from subroutine
+    
+display_patient_message:
+    ; Clear the display to remove previous content
+    ldi data, LCD_DSPL_CLR          ; Command to clear display
+    rcall lcd_write_com
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+     ; Display "Confirm Data:" on the first line
+    ldi data, 'C'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'o'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'n'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'f'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'i'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'r'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'm'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, ' '
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'D'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'a'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 't'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'a'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, ':'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    
+    ldi data, 0xC0            ; Address for rightmost position on 2nd line
+    rcall lcd_write_com
+    rcall lcd_wait_busy
+
+   ldi r29, high(0x200)
+   ldi r28, low(0x200)
+get_patient_inc_2:    
+    inc temp2
+    cp patient_num, temp2
+    breq get_patient_ok_2
+    ADIW r29:r28, 0x10
+    rjmp get_patient_inc_2
+get_patient_ok_2:   
+    
+display_next_char_1:          
+    LD data,Y+              ; 
+    cpi data,'\0'           ; 
+    breq display_number     ; 
+    rcall lcd_write_data
+    rcall lcd_wait_busy 
+    rjmp display_next_char_1
+
+display_number:    
+    ; Display the patient number
+    ; Calculate position for patient number aligned right
+    ; Move the cursor to the desired position for the patient number
+    ldi data, 0xC0 + 15            ; Address for rightmost position on 2nd line
+    rcall lcd_write_com
+    rcall lcd_wait_busy
+    mov data, patient_num                  ; Move patient number from r10 to data
+    ldi temp2, '0'                  ; Load ASCII value of '0' into temp2
+    add data, temp2                ; Add ASCII offset to temp1 to convert to ASCII
+    rcall lcd_write_data            ; Write the patient number to LCD
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ret                             ; Return from display_patient_message subroutine
+
+display_next_patient:
+    ; Clear display before showing new content
+    ldi data, LCD_DSPL_CLR          ; Command to clear display
+    rcall lcd_write_com
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ; Display "Next Patient:" on the first line
+    ldi data, 'N'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'e'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'x'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 't'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, ' '
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'P'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'a'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 't'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'i'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'e'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 'n'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, 't'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+    ldi data, ':'
+    rcall lcd_write_data
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ; Move to the beginning of the second line for patient details
+    ldi data, 0xC0                 ; Set DDRAM address to start of second line
+    rcall lcd_write_com
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ; Display patient name (assuming it's stored in a buffer or register sequence)
+      ldi r29, high(0x200)
+   ldi r28, low(0x200)
+get_patient_inc_3:    
+    inc temp2
+    cp patient_num, temp2
+    breq get_patient_ok_3
+    ADIW r29:r28, 0x10
+    rjmp get_patient_inc_3
+get_patient_ok_3:   
+    
+display_next_char_2:          
+    LD data,Y+              ; 
+    cpi data,'\0'           ; 
+    breq display_number_2     ; 
+    rcall lcd_write_data
+    rcall lcd_wait_busy 
+    rjmp display_next_char_2
+
+display_number_2:    
+    ; Display the patient number
+    ; Calculate position for patient number aligned right
+    ; Move the cursor to the desired position for the patient number
+    ldi data, 0xC0 + 15            ; Address for rightmost position on 2nd line
+    rcall lcd_write_com
+    rcall lcd_wait_busy
+    mov data, patient_num                  ; Move patient number from r10 to data
+    ldi temp2, '0'                  ; Load ASCII value of '0' into temp2
+    add data, temp2                ; Add ASCII offset to temp1 to convert to ASCII
+    rcall lcd_write_data            ; Write the patient number to LCD
+    rcall lcd_wait_busy             ; Wait until LCD is ready
+
+    ret                             ; Return from display_next_patient
+   
+Timer0OVF:
+   push temp1
+   push data
+   
+   adiw r31:r30, 1             ; Increase the temporary counter by one.
+    cpi r30, low(20)          ; Check if (r25:r24)=1000
+    brne TM0_return
+    cpi r31, high(20)         ; 1000 = 1 sec at current timer settings
+    brne TM0_return
+    
+   ;ldi data, 'J'                  ; Example first letter of name (e.g., "John")
+    ;rcall lcd_write_data
+    ;rcall lcd_wait_busy 
+    
+    mov temp1, key_pressed
+
+    cpi temp1, 1              ; 如果key_pressed == 1, key_pressed = 0
+    brne key_pressed_ne_1
+    ;ldi temp1, 0
+    ;mov key_pressed, temp1
+    clr key_pressed    
+    
+    ;ldi data, 'J'                  ; Example first letter of name (e.g., "John")
+    ;rcall lcd_write_data
+    ;rcall lcd_wait_busy 
+    
+    jmp TM0_clear_r
+
+key_pressed_ne_1:       
+    cpi temp1, 0              ; key_pressed != 1, key_pressed == 0
+    brne TM0_clear_r
+    ldi temp1, 2              ; key_pressed == 0, key_pressed = 2
+    mov key_pressed, temp1
+    
+    ;ldi data, 'X'                  ; Example first letter of name (e.g., "John")
+    ;rcall lcd_write_data
+    ;rcall lcd_wait_busy 
+    clr last_key                    ; Clear last_key for fresh input
+    clr key_counter                 ; Reset key_counter
+   
+    ldi data, 0x14            
+    rcall lcd_write_com      ; 
+    rcall lcd_wait_busy       ; 
+
+    st Y+, now_char
+ 
+TM0_clear_r:
+    clr r30
+    clr r31   
+TM0_return:  
+   pop data
+   pop temp1
+   reti
+    
+; Send a command (RS=0, RW=0) to LCD
+lcd_write_com:
+	out PORTF, data   ; send data (D0-D7) to LCD
+	cbi PORTA, LCD_RS ; RS=0
+	cbi PORTA, LCD_RW ; RW=0
+	nop
+	sbi PORTA, LCD_E  ; set enabled pin and wait
+	nop
+	nop
+	nop
+	cbi PORTA, LCD_E  ; clear enaled pin and wait
+	nop
+	nop
+	nop
+	ret
+
+; Send Data to LCD (RS=1, RW=0)
+lcd_write_data:
+	out PORTF, data    ; send data (D0-D7) to LCD
+	sbi PORTA, LCD_RS  ; RS=1
+	cbi PORTA, LCD_RW  ; RW=0
+	nop
+	nop
+	nop
+	sbi PORTA, LCD_E   ; set enabled pin and wait
+	nop
+	nop
+	nop
+	cbi PORTA, LCD_E   ; clear enaled pin and wait
+	nop
+	nop
+	nop
+	ret
+
+; Wait for busy flag to clear
+lcd_wait_busy:
+	push temp1
+	clr temp1
+	out DDRF, temp1      ; make Port F input to read busy flag
+	cbi PORTA, LCD_RS  ; RS=0
+	sbi PORTA, LCD_RW  ; RW=1
+busyLoop:
+		nop
+		sbi PORTA, LCD_E  ; set enabled pin and wait
+		nop
+		nop
+		nop
+		in temp1, PINF      ; read Port F value
+		cbi PORTA, LCD_E  ; clear enabled pin
+		sbrc temp1, LCD_BF  ; if busy flag set, not skipping next instruction
+		rjmp busyLoop     ; keep looping
+	; otherwise: wait is over
+	ser temp1
+	out DDRF, temp1 ; make Port F output for sending data further
+	pop temp1
+	ret
